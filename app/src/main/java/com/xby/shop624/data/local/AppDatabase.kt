@@ -7,6 +7,8 @@ import androidx.room.RoomDatabase
 import com.xby.shop624.data.local.dao.BannerDao
 import com.xby.shop624.data.local.dao.CartDao
 import com.xby.shop624.data.local.dao.CommentDao
+import com.xby.shop624.data.local.dao.FavoriteDao
+import com.xby.shop624.data.local.dao.LikeDao
 import com.xby.shop624.data.local.dao.NavCategoryDao
 import com.xby.shop624.data.local.dao.OrderDao
 import com.xby.shop624.data.local.dao.PrimaryCategoryDao
@@ -16,6 +18,8 @@ import com.xby.shop624.data.local.dao.UserDao
 import com.xby.shop624.data.local.entity.BannerEntity
 import com.xby.shop624.data.local.entity.CartItemEntity
 import com.xby.shop624.data.local.entity.CommentEntity
+import com.xby.shop624.data.local.entity.FavoriteEntity
+import com.xby.shop624.data.local.entity.LikeEntity
 import com.xby.shop624.data.local.entity.NavCategoryEntity
 import com.xby.shop624.data.local.entity.OrderEntity
 import com.xby.shop624.data.local.entity.OrderItemEntity
@@ -35,9 +39,11 @@ import com.xby.shop624.data.local.entity.UserEntity
         CommentEntity::class,
         CartItemEntity::class,
         OrderEntity::class,
-        OrderItemEntity::class
+        OrderItemEntity::class,
+        FavoriteEntity::class,
+        LikeEntity::class
     ],
-    version = 22,
+    version = 24,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -51,6 +57,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun commentDao(): CommentDao
     abstract fun cartDao(): CartDao
     abstract fun orderDao(): OrderDao
+    abstract fun favoriteDao(): FavoriteDao
+    abstract fun likeDao(): LikeDao
 
     companion object {
         @Volatile

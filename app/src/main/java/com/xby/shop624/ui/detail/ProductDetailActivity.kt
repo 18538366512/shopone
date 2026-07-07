@@ -13,20 +13,25 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.xby.shop624.R
 import com.xby.shop624.databinding.ActivityProductDetailBinding
 import com.xby.shop624.databinding.DialogCommentInputBinding
+import com.xby.shop624.databinding.DialogSpecsBinding
 import com.xby.shop624.ui.cart.CartViewModel
 import com.xby.shop624.ui.chat.ChatActivity
 import com.xby.shop624.ui.main.MainActivity
 import com.xby.shop624.util.loadNetworkImage
+import com.xby.shop624.data.local.entity.ProductEntity
 
 class ProductDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProductDetailBinding
     private val viewModel: ProductDetailViewModel by viewModels()
     private val cartViewModel: CartViewModel by viewModels()
+    private val favoriteViewModel: FavoriteViewModel by viewModels()
+    private val likeViewModel: LikeViewModel by viewModels()
     private var productId: Int = -1
     private var currentImageUrl: String? = null
     private var currentEmoji: String? = null
     private var selectedSpec: String = ""
+    private var currentProduct: ProductEntity? = null
 
     private val commentAdapter = CommentAdapter { comment ->
         showInputDialog(getString(com.xby.shop624.R.string.detail_reply_to, comment.userName)) { content ->
@@ -62,6 +67,16 @@ class ProductDetailActivity : AppCompatActivity() {
             startActivity(Intent(this, ChatActivity::class.java))
         }
 
+        binding.ivFavorite.setOnClickListener {
+            currentProduct?.let {
+                favoriteViewModel.toggleFavorite(it)
+            }
+        }
+
+        binding.ivLike.setOnClickListener {
+            likeViewModel.toggleLike(productId)
+        }
+
         binding.ivProduct.setOnClickListener {
             startActivity(
                 Intent(this, ImagePreviewActivity::class.java).apply {
@@ -87,6 +102,7 @@ class ProductDetailActivity : AppCompatActivity() {
 
         viewModel.product.observe(this) { product ->
             if (product == null) return@observe
+            currentProduct = product
             binding.toolbar.title = product.name
             currentImageUrl = product.imageUrl
             currentEmoji = product.emoji
@@ -97,26 +113,16 @@ class ProductDetailActivity : AppCompatActivity() {
             binding.tvOriginalPrice.text = getString(com.xby.shop624.R.string.price_retail, product.originalPrice)
             binding.tvDescription.text = product.description
             binding.tvSales.text = getString(com.xby.shop624.R.string.detail_sales, product.sales)
+            favoriteViewModel.checkFavorite(product.id)
+            likeViewModel.checkLike(product.id)
 
             val specList = product.specs.takeIf { it.isNotBlank() }?.split("|") ?: emptyList()
             if (specList.isNotEmpty()) {
-                binding.cgSpecs.removeAllViews()
-                binding.cgSpecs.isSingleSelection = true
-
-                specList.forEachIndexed { index, spec ->
-                    val chip = createSpecChip(spec)
-                    chip.id = index
-                    binding.cgSpecs.addView(chip)
-                }
-
                 selectedSpec = specList.first()
-                binding.cgSpecs.check(0)
+                binding.tvSelectedSpec.text = selectedSpec
 
-                binding.cgSpecs.setOnCheckedStateChangeListener { _, checkedIds ->
-                    if (checkedIds.isNotEmpty()) {
-                        val position = checkedIds[0]
-                        selectedSpec = specList[position]
-                    }
+                binding.cardSpecs.setOnClickListener {
+                    showSpecsDialog(specList)
                 }
             }
         }
@@ -143,6 +149,30 @@ class ProductDetailActivity : AppCompatActivity() {
         cartViewModel.cartCount.observe(this) { count ->
             binding.tvCartBadge.isVisible = count > 0
             binding.tvCartBadge.text = if (count > 99) "99+" else count.toString()
+        }
+
+        favoriteViewModel.isFavorite.observe(this) { isFav ->
+            binding.ivFavorite.setColorFilter(
+                resources.getColor(if (isFav) R.color.price else R.color.text_secondary, null)
+            )
+        }
+
+        favoriteViewModel.toastMessage.observe(this) { msg ->
+            msg ?: return@observe
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            favoriteViewModel.clearToast()
+        }
+
+        likeViewModel.isLiked.observe(this) { isLiked ->
+            binding.ivLike.setColorFilter(
+                resources.getColor(if (isLiked) R.color.price else R.color.text_secondary, null)
+            )
+        }
+
+        likeViewModel.toastMessage.observe(this) { msg ->
+            msg ?: return@observe
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            likeViewModel.clearToast()
         }
 
         viewModel.load(productId)
@@ -172,6 +202,41 @@ class ProductDetailActivity : AppCompatActivity() {
             textSize = 12f
             setPadding(16, 8, 16, 8)
         }
+    }
+
+    private fun showSpecsDialog(specList: List<String>) {
+        val dialogBinding = DialogSpecsBinding.inflate(LayoutInflater.from(this))
+        dialogBinding.cgSpecs.isSingleSelection = true
+
+        specList.forEachIndexed { index, spec ->
+            val chip = createSpecChip(spec)
+            chip.id = index
+            dialogBinding.cgSpecs.addView(chip)
+            if (spec == selectedSpec) {
+                dialogBinding.cgSpecs.check(index)
+            }
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setView(dialogBinding.root)
+            .setCancelable(true)
+            .create()
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConfirm.setOnClickListener {
+            val checkedIds = dialogBinding.cgSpecs.checkedChipIds
+            if (checkedIds.isNotEmpty()) {
+                val position = checkedIds[0]
+                selectedSpec = specList[position]
+                binding.tvSelectedSpec.text = selectedSpec
+            }
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     companion object {

@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">帮便利</string>
+    <string name="second_floor_behavior" translatable="false">com.xby.shop624.ui.home.SecondFloorBehavior</string>
     <string name="welcome_slogan">B2B订货 · 次日到店</string>
     <string name="welcome_enter">立即体验</string>
     <string name="login_title">欢迎登录</string>
@@ -26,6 +27,11 @@
     <string name="detail_no_comment">暂无评价，快来抢沙发吧~</string>
     <string name="detail_add_comment">写评论</string>
     <string name="detail_kefu">客服</string>
+    <string name="detail_favorite">收藏</string>
+    <string name="detail_favorited">已收藏</string>
+    <string name="detail_like">点赞</string>
+    <string name="detail_liked">已点赞</string>
+    <string name="home_loading_more">加载更多...</string>
     <string name="detail_reply">回复</string>
     <string name="detail_reply_to">回复 %1$s</string>
     <string name="detail_submit">发送</string>

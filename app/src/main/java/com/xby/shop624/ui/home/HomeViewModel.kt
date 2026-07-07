@@ -13,6 +13,7 @@ import com.xby.shop624.data.repository.HomeRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.min
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -36,10 +37,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
+    private val _isLoadingMore = MutableLiveData(false)
+    val isLoadingMore: LiveData<Boolean> = _isLoadingMore
+
+    private val _hasMore = MutableLiveData(true)
+    val hasMore: LiveData<Boolean> = _hasMore
+
     private val _emptyHint = MutableLiveData<String?>()
     val emptyHint: LiveData<String?> = _emptyHint
 
     private var searchJob: Job? = null
+    private var currentPage = 1
+    private val pageSize = 10
 
     init {
         loadHomeData()
@@ -58,6 +67,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun selectCategory(categoryKey: String) {
         if (_selectedCategoryKey.value == categoryKey) return
         _selectedCategoryKey.value = categoryKey
+        currentPage = 1
+        _hasMore.value = true
         viewModelScope.launch {
             refreshProducts()
         }
@@ -68,7 +79,38 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(300)
+            currentPage = 1
+            _hasMore.value = true
             refreshProducts()
+        }
+    }
+
+    fun loadMore() {
+        if (_isLoadingMore.value == true || !_hasMore.value!!) return
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            currentPage++
+            val keyword = _searchKeyword.value.orEmpty().trim()
+            val categoryKey = _selectedCategoryKey.value
+            val result = if (keyword.isEmpty()) {
+                homeRepository.getProducts(categoryKey)
+            } else {
+                homeRepository.searchProducts(keyword, categoryKey)
+            }
+            val startIndex = (currentPage - 1) * pageSize
+            val endIndex = startIndex + pageSize
+            val newProducts = if (startIndex < result.size) {
+                result.subList(startIndex, minOf(endIndex, result.size))
+            } else {
+                emptyList()
+            }
+            if (newProducts.isEmpty()) {
+                _hasMore.value = false
+            } else {
+                val current = _products.value ?: emptyList()
+                _products.postValue(current + newProducts)
+            }
+            _isLoadingMore.value = false
         }
     }
 
@@ -80,9 +122,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             homeRepository.searchProducts(keyword, categoryKey)
         }
-        _products.postValue(result)
+        val pageResult = result.take(pageSize)
+        _products.postValue(pageResult)
+        _hasMore.postValue(pageResult.size >= pageSize)
         _emptyHint.postValue(
-            if (result.isEmpty()) {
+            if (pageResult.isEmpty()) {
                 if (keyword.isNotEmpty()) "未找到「$keyword」相关商品" else "该分类暂无商品"
             } else {
                 null
